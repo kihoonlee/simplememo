@@ -14,6 +14,7 @@
 - **라이브 검증** (dev 서버 + 실제 자격증명): `/api/auth/providers` 200 + Google provider 활성, 로그인 리다이렉트 URL에 `drive.file`·`access_type=offline`·`prompt=consent` 포함 확인. 구글 로그인 통과 → 폴더 선택 화면 도달.
 - **UI 수정**: OS 다크모드에서 흰 버튼 위 글자가 안 보이던 문제 → 라이트 테마로 고정(`app/globals.css`, `color-scheme: light`). 헤드리스 스크린샷으로 대비 확인.
 - **PWA**: `next build`에 `/manifest.webmanifest`·`/apple-icon`(PNG) 라우트 생성 + 자산 서빙 확인(200, 올바른 content-type). Turbopack 비호환 `@serwist/next`·`serwist` 제거, 직접 작성한 경량 서비스워커(`public/sw.js`)로 대체.
+- **E2E**: Playwright(mobile-chrome 뷰포트) **3/3 통과** — 미인증 로그인 화면 렌더, 매니페스트 standalone, 로그인의 `drive.file` 위임 (`npm run test:e2e`).
 
 ### 구현 범위
 - **인증**: Auth.js v5 구글 OAuth(`drive.file`), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`, `next-auth.d.ts`
@@ -33,9 +34,10 @@
 ### 알려진 한계 / 미완
 - 인증·폴더선택 화면까지 라이브 확인됨. **메모 작성→드라이브 `.md` 저장까지의 인터랙티브 플로우는 사용자 테스트 진행 중.**
 - PWA 설치형 동작(서비스워커 install)은 프로덕션 빌드/배포에서 최종 확인 필요(매니페스트·아이콘·SW 코드·자산은 완료).
-- **Playwright E2E** 미작성.
 - 목록은 매 로드 시 전 메모 content를 읽어 메타 파싱 — 메모 수 많으면 느려질 수 있음(IndexedDB 메타 캐시로 최적화 여지).
 - 이미지 URL은 `drive.google.com/uc?id=` 형식 — 외부 뷰어 렌더는 라이브 확인 필요.
 
 ### 다음 작업
-- Phase 8: PWA + 모바일 마감, E2E. 라이브 검증. (선택) 목록 메타 캐시.
+- **C: 라이브 기능 검증** — 메모 작성→드라이브 `.md` 저장/수정/삭제/이미지. 사용자 구글 로그인 필요.
+- **D: Vercel 배포** — 사용자 Vercel 계정 + 환경변수/redirect URI 등록 필요.
+- (선택) 목록 IndexedDB 메타 캐시, 이미지 외부 렌더 확인.
