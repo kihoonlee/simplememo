@@ -21,9 +21,7 @@ test.describe("SimpleMemo 스모크", () => {
     expect(Array.isArray(m.icons) && m.icons.length).toBeGreaterThan(0);
   });
 
-  test("로그인 버튼이 drive.file 스코프로 구글에 위임한다", async ({
-    page,
-  }) => {
+  test("로그인이 구글 OAuth로 위임된다", async ({ page }) => {
     await page.goto("/");
     const res = await page.request.get("/api/auth/providers");
     expect(res.status()).toBe(200);

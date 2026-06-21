@@ -1,7 +1,9 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 
-const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+// Full drive scope: required to write into a pre-existing user folder
+// (SMEMO_FOLDER_ID) that the app did not create. drive.file cannot reach it.
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 
 // Auth.js v5 (App Router). Google sign-in with the least-privilege drive.file
 // scope. Access/refresh tokens live in the encrypted JWT (server-side cookie),

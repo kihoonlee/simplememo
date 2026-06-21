@@ -15,7 +15,7 @@
 ## 3. OAuth 동의화면
 - User type: **External** → 'Testing' 상태 유지.
 - 앱 이름/지원 이메일 입력.
-- **Scopes**: `.../auth/drive.file` 추가(앱이 만든/선택한 파일만).
+- **Scopes**: `https://www.googleapis.com/auth/drive` 추가(지정한 기존 폴더에 강제 저장하려면 풀 drive 필요. Testing 모드 + 테스트 사용자면 검증 없이 사용 가능).
 - **Test users**: 본인 구글 이메일 추가(이게 있어야 로그인 가능).
 
 ## 4. 자격증명 (API 및 서비스 > 사용자 인증 정보)
@@ -38,6 +38,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=   # = AUTH_GOOGLE_ID (브라우저 Picker 토큰 �
 NEXT_PUBLIC_GOOGLE_API_KEY=     # 4(b)
 NEXT_PUBLIC_GOOGLE_APP_ID=      # 1 의 프로젝트 번호
 NEXT_PUBLIC_DEFAULT_FOLDER_ID=1draGG7AxTJ4_pSSkKbrt1fvEWxbuWHTs
+SMEMO_FOLDER_ID=1draGG7AxTJ4_pSSkKbrt1fvEWxbuWHTs   # 모든 메모를 이 폴더에 강제 저장(풀 drive 스코프 필요)
 ```
 
 ## 6. 실행
@@ -48,6 +49,6 @@ npm run dev
 - 새 메모 작성 → 자동으로 `{제목}.md`가 그 폴더에 저장됩니다.
 
 ## 참고
-- **scope `drive.file`**: 앱이 만든/Picker로 연 파일만 접근(최소권한). 폴더에 앱 밖에서 수동으로 넣은 `.md`는 목록에 안 보일 수 있음.
+- **scope `drive`(풀)** + **`SMEMO_FOLDER_ID`**: 지정한 기존 폴더에 모든 메모를 강제 저장하기 위함(Picker 불필요). 스코프를 바꿨으면 **로그아웃 → 다시 로그인**으로 재동의해야 토큰에 새 권한이 들어갑니다.
 - **이미지**: `images/` 하위에 업로드되고 '링크가 있는 사용자 보기'로 공유되어 `.md`를 외부 뷰어에서 열어도 보입니다.
 - 배포(Vercel) 시 같은 환경변수를 프로젝트 설정에 등록하고, 위 redirect URI/origin에 배포 도메인을 추가하세요.
