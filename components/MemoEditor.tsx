@@ -1,12 +1,11 @@
 "use client";
 
-import "@toast-ui/editor/dist/toastui-editor.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type ToastEditor from "@toast-ui/editor";
 import { api, ApiError } from "@/lib/api-client";
 import { saveDraft, clearDraft } from "@/lib/store/db";
+import EditorPane from "./EditorPane";
 
 type Status = "idle" | "saving" | "saved" | "error" | "conflict";
 
@@ -36,8 +35,6 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(memoId));
 
-  const elRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<ToastEditor | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doSave = useCallback(async (force = false) => {
@@ -97,14 +94,24 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
     timer.current = setTimeout(() => void doSave(false), 1200);
   }, [doSave]);
 
-  const addImageBlobHook = useCallback(
-    async (blob: Blob | File, cb: (url: string, alt?: string) => void) => {
+  // Stable callbacks handed to the isolated editor (never change identity).
+  const onEditorChange = useCallback(
+    (md: string) => {
+      bodyRef.current = md;
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
+  const onImageUpload = useCallback(
+    async (blob: Blob | File): Promise<string> => {
       try {
         const name = (blob as File).name || "image.png";
         const { url } = await api.uploadImage(blob, name);
-        cb(url, name);
+        return url;
       } catch (e) {
         setErrorMsg(e instanceof Error ? e.message : "이미지 업로드 실패");
+        throw e;
       }
     },
     [],
@@ -138,40 +145,6 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
       active = false;
     };
   }, [memoId]);
-
-  // Initialise the Toast UI editor (browser only) once content is ready.
-  useEffect(() => {
-    if (loading) return;
-    let editor: ToastEditor | null = null;
-    let disposed = false;
-    (async () => {
-      const EditorCls = (await import("@toast-ui/editor")).default;
-      if (disposed || !elRef.current) return;
-      editor = new EditorCls({
-        el: elRef.current,
-        initialEditType: "wysiwyg",
-        previewStyle: "tab",
-        height: "100%",
-        initialValue: bodyRef.current,
-        autofocus: false,
-        hooks: { addImageBlobHook },
-      });
-      editor.on("change", () => {
-        bodyRef.current = editor!.getMarkdown();
-        scheduleSave();
-      });
-      editorRef.current = editor;
-    })();
-    return () => {
-      disposed = true;
-      try {
-        editor?.destroy();
-      } catch {
-        // ignore teardown errors
-      }
-      editorRef.current = null;
-    };
-  }, [loading, addImageBlobHook, scheduleSave]);
 
   function onTitle(v: string) {
     titleRef.current = v;
@@ -262,11 +235,11 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
           불러오는 중…
         </div>
       ) : (
-        // Give Toast UI a definite-height containing block: an absolutely
-        // positioned inner div fills the flex slot so `height: 100%` resolves.
-        <div className="relative min-h-0 flex-1">
-          <div ref={elRef} className="absolute inset-0" />
-        </div>
+        <EditorPane
+          initialValue={bodyRef.current}
+          onChange={onEditorChange}
+          onImageUpload={onImageUpload}
+        />
       )}
 
       <footer className="flex flex-col gap-1 border-t border-neutral-200 px-4 py-2">
