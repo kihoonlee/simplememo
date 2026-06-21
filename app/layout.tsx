@@ -2,11 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import AppGate from "@/components/AppGate";
+import RegisterSW from "@/components/RegisterSW";
 
 export const metadata: Metadata = {
   title: "SimpleMemo",
   description: "모바일 메모 — 구글 드라이브에 .md로 저장",
   applicationName: "SimpleMemo",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
   appleWebApp: { capable: true, title: "SimpleMemo", statusBarStyle: "default" },
 };
 
@@ -26,6 +29,7 @@ export default function RootLayout({
         <Providers>
           <AppGate>{children}</AppGate>
         </Providers>
+        <RegisterSW />
       </body>
     </html>
   );
