@@ -14,7 +14,8 @@
 - **라이브 검증** (dev 서버 + 실제 자격증명): `/api/auth/providers` 200 + Google provider 활성, 로그인 리다이렉트 URL에 `drive.file`·`access_type=offline`·`prompt=consent` 포함 확인. 구글 로그인 통과 → 폴더 선택 화면 도달.
 - **UI 수정**: OS 다크모드에서 흰 버튼 위 글자가 안 보이던 문제 → 라이트 테마로 고정(`app/globals.css`, `color-scheme: light`). 헤드리스 스크린샷으로 대비 확인.
 - **PWA**: `next build`에 `/manifest.webmanifest`·`/apple-icon`(PNG) 라우트 생성 + 자산 서빙 확인(200, 올바른 content-type). Turbopack 비호환 `@serwist/next`·`serwist` 제거, 직접 작성한 경량 서비스워커(`public/sw.js`)로 대체.
-- **E2E**: Playwright(mobile-chrome 뷰포트) **3/3 통과** — 미인증 로그인 화면 렌더, 매니페스트 standalone, 로그인의 `drive.file` 위임 (`npm run test:e2e`).
+- **E2E**: Playwright(mobile-chrome 뷰포트) **5/5 통과** — 로그인 화면 렌더, 매니페스트 standalone, `drive.file` 위임, +에디터 위지윅 본문 입력/제목 입력 (`npm run test:e2e`).
+- **버그픽스(작성 불가)**: Toast UI `height:100%`가 flex 컨테이너에서 미해석 → 위지윅 편집 영역이 붕괴(약 74→36px)되어 본문 입력 불가였음. 편집 컨테이너를 `relative` + 내부 `absolute inset-0`로 바꿔 확정 높이 부여 → 해결. Red(되돌리면 height 36, 실패)-Green(복구 578, 통과) E2E로 가드. dev-전용 `?debug=1` 게이트 우회는 프로덕션 빌드에서 제거됨.
 
 ### 구현 범위
 - **인증**: Auth.js v5 구글 OAuth(`drive.file`), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`, `next-auth.d.ts`

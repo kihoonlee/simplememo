@@ -262,7 +262,11 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
           불러오는 중…
         </div>
       ) : (
-        <div ref={elRef} className="min-h-0 flex-1 overflow-hidden" />
+        // Give Toast UI a definite-height containing block: an absolutely
+        // positioned inner div fills the flex slot so `height: 100%` resolves.
+        <div className="relative min-h-0 flex-1">
+          <div ref={elRef} className="absolute inset-0" />
+        </div>
       )}
 
       <footer className="flex flex-col gap-1 border-t border-neutral-200 px-4 py-2">

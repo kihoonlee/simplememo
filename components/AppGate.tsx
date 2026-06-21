@@ -18,6 +18,20 @@ function FullScreen({ children }: { children: React.ReactNode }) {
 export default function AppGate({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const [folderId, setFolderId] = useState<string | null | undefined>(undefined);
+  const [debugBypass, setDebugBypass] = useState(false);
+
+  // Dev-only: `?debug=1` skips the auth gate so the editor can be exercised in
+  // E2E without a real Google session. Set in an effect (not during render) so
+  // server and first client render match — no hydration mismatch. Compiled out
+  // of production builds; API routes still enforce auth regardless.
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      new URLSearchParams(window.location.search).get("debug") === "1"
+    ) {
+      setDebugBypass(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -31,6 +45,7 @@ export default function AppGate({ children }: { children: React.ReactNode }) {
     };
   }, [status]);
 
+  if (debugBypass) return <>{children}</>;
   if (status === "loading") return <FullScreen>불러오는 중…</FullScreen>;
   if (status === "unauthenticated") return <SignIn />;
   if (folderId === undefined) return <FullScreen>불러오는 중…</FullScreen>;
