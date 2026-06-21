@@ -11,6 +11,8 @@
 - `npm run build` → 성공 (8 라우트 컴파일)
 - `npm run typecheck` → 0 에러
 - `npm test` → 11/11 통과 (frontmatter 왕복, slug)
+- **라이브 검증** (dev 서버 + 실제 자격증명): `/api/auth/providers` 200 + Google provider 활성, 로그인 리다이렉트 URL에 `drive.file`·`access_type=offline`·`prompt=consent` 포함 확인. 구글 로그인 통과 → 폴더 선택 화면 도달.
+- **UI 수정**: OS 다크모드에서 흰 버튼 위 글자가 안 보이던 문제 → 라이트 테마로 고정(`app/globals.css`, `color-scheme: light`). 헤드리스 스크린샷으로 대비 확인.
 
 ### 구현 범위
 - **인증**: Auth.js v5 구글 OAuth(`drive.file`), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`, `next-auth.d.ts`
@@ -25,9 +27,10 @@
 1. `SETUP.md`대로 구글 클라우드 OAuth 설정 → `.env.local` 채우기
 2. `npm run dev` → http://localhost:3000
 - 확정 결정: 개인용 / Next.js+Vercel / Toast UI Editor / `drive.file`+Picker / 이미지 링크공유 / 온라인우선+자동저장+로컬초안.
+- ⚠️ 구글 동의화면 **User Type은 External**(개인 Gmail). Internal이면 `org_internal`로 로그인 차단됨. 테스트 사용자에 본인 계정 추가.
 
 ### 알려진 한계 / 미완
-- **라이브 구글 플로우 런타임 미검증** (자격증명 필요).
+- 인증·폴더선택 화면까지 라이브 확인됨. **메모 작성→드라이브 `.md` 저장까지의 인터랙티브 플로우는 사용자 테스트 진행 중.**
 - **PWA**(Serwist 설치됨) 서비스워커/매니페스트 미연결.
 - **Playwright E2E** 미작성.
 - 목록은 매 로드 시 전 메모 content를 읽어 메타 파싱 — 메모 수 많으면 느려질 수 있음(IndexedDB 메타 캐시로 최적화 여지).
