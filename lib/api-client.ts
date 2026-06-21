@@ -78,7 +78,11 @@ export const api = {
       await fetch(`/api/memos/${encodeURIComponent(id)}`, { method: "DELETE" }),
     );
   },
-  async getFolder(): Promise<{ folderId: string | null }> {
+  async getFolder(): Promise<{
+    folderId: string | null;
+    folderName?: string;
+    folderLink?: string | null;
+  }> {
     return json(await fetch("/api/folder"));
   },
   async setFolder(folderId: string, folderName?: string): Promise<{ folderId: string }> {

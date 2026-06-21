@@ -23,12 +23,23 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>({ type: "all" });
+  const [folderInfo, setFolderInfo] = useState<{
+    folderName?: string;
+    folderLink?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     api
       .listMemos()
       .then(setMemos)
       .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"));
+  }, []);
+
+  useEffect(() => {
+    api
+      .getFolder()
+      .then(setFolderInfo)
+      .catch(() => {});
   }, []);
 
   const folders = useMemo(
@@ -68,6 +79,24 @@ export default function HomePage() {
           로그아웃
         </button>
       </header>
+
+      {folderInfo?.folderName && (
+        <div className="px-4 pt-2 text-xs text-neutral-400">
+          저장 위치:{" "}
+          {folderInfo.folderLink ? (
+            <a
+              href={folderInfo.folderLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-neutral-700"
+            >
+              {folderInfo.folderName} ↗
+            </a>
+          ) : (
+            folderInfo.folderName
+          )}
+        </div>
+      )}
 
       <div className="px-4 pt-3">
         <input

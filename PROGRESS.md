@@ -17,6 +17,7 @@
 - **E2E**: Playwright(mobile-chrome 뷰포트) **5/5 통과** — 로그인 화면 렌더, 매니페스트 standalone, `drive.file` 위임, +에디터 위지윅 본문 입력/제목 입력 (`npm run test:e2e`).
 - **버그픽스(작성 불가)**: Toast UI `height:100%`가 flex 컨테이너에서 미해석 → 위지윅 편집 영역이 붕괴(약 74→36px)되어 본문 입력 불가였음. 편집 컨테이너를 `relative` + 내부 `absolute inset-0`로 바꿔 확정 높이 부여 → 해결. Red(되돌리면 height 36, 실패)-Green(복구 578, 통과) E2E로 가드. dev-전용 `?debug=1` 게이트 우회는 프로덕션 빌드에서 제거됨.
 - **버그픽스(저장 시 `removeChild` 에러)**: Toast UI 내부 렌더러가 관리하는 DOM을 부모 컴포넌트 재렌더가 건드려 동기화가 깨지던 클래스. 에디터를 `EditorPane`(memo + mount-once + 콜백 ref)로 분리해 React 재렌더와 격리. 헤드리스 3회 재현(401/replaceState/mock-201)은 모두 에러 미발생 → 실제 인증·IME·타이밍 의존 추정, 정석 격리로 대응(사용자 재검증 필요).
+- **기능/진단(저장 위치 표시)**: 목록 상단에 현재 대상 폴더명 + Drive 링크 표시(`GET /api/folder`가 `folderName/folderLink`도 반환). "리스트엔 보이는데 그 폴더엔 파일이 없다" → 앱이 **다른 폴더(예: 앱 생성 `SimpleMemo`)** 또는 **다른 구글 계정**을 쓰는 중임을 즉시 확인 가능.
 
 ### 구현 범위
 - **인증**: Auth.js v5 구글 OAuth(`drive.file`), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`, `next-auth.d.ts`

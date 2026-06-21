@@ -1,12 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDriveAccessToken } from "@/lib/auth-token";
 import { getFolderId, setFolderId } from "@/lib/folder-store";
-import { getMeta, createAppFolder } from "@/lib/drive/client";
+import { getMeta, createAppFolder, getFolderInfo } from "@/lib/drive/client";
 import { folderSelectionSchema } from "@/lib/validation";
 import { errorResponse } from "@/lib/http";
 
-export async function GET() {
-  return NextResponse.json({ folderId: (await getFolderId()) ?? null });
+export async function GET(req: NextRequest) {
+  const folderId = await getFolderId();
+  if (!folderId) return NextResponse.json({ folderId: null });
+  const auth = await getDriveAccessToken(req);
+  if (!auth.ok) return NextResponse.json({ folderId });
+  try {
+    const info = await getFolderInfo(auth.token, folderId);
+    return NextResponse.json({
+      folderId,
+      folderName: info.name,
+      folderLink: info.webViewLink ?? null,
+    });
+  } catch {
+    return NextResponse.json({ folderId });
+  }
 }
 
 export async function POST(req: NextRequest) {

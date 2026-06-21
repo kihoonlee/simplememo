@@ -69,6 +69,16 @@ export async function getMeta(token: string, id: string): Promise<DriveFile> {
   return res.json();
 }
 
+// Folder name + Drive link, used to show the user exactly where memos are saved.
+export async function getFolderInfo(
+  token: string,
+  id: string,
+): Promise<{ id: string; name: string; webViewLink?: string }> {
+  const fields = encodeURIComponent("id,name,webViewLink");
+  const res = await driveFetch(token, `${DRIVE}/files/${id}?fields=${fields}`);
+  return res.json();
+}
+
 async function uploadMultipart(
   token: string,
   metadata: Record<string, unknown>,
