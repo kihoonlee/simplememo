@@ -58,6 +58,28 @@ export async function listMarkdown(
   return (data.files ?? []).filter((f) => f.name.toLowerCase().endsWith(".md"));
 }
 
+// One page of non-trashed .md files under a folder, newest first, with a
+// nextPageToken for cursor-based pagination (used by the infinite-scroll list).
+export async function listMarkdownPage(
+  token: string,
+  folderId: string,
+  pageSize = 10,
+  pageToken?: string,
+): Promise<{ files: DriveFile[]; nextPageToken?: string }> {
+  const query = `'${q(folderId)}' in parents and trashed=false and mimeType!='${FOLDER_MIME}'`;
+  let url =
+    `${DRIVE}/files?q=${encodeURIComponent(query)}` +
+    `&fields=${encodeURIComponent("nextPageToken,files(id,name,modifiedTime)")}` +
+    `&orderBy=modifiedTime desc&pageSize=${pageSize}`;
+  if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+  const res = await driveFetch(token, url);
+  const data: { files?: DriveFile[]; nextPageToken?: string } = await res.json();
+  const files = (data.files ?? []).filter((f) =>
+    f.name.toLowerCase().endsWith(".md"),
+  );
+  return { files, nextPageToken: data.nextPageToken };
+}
+
 export async function readFile(token: string, id: string): Promise<string> {
   const res = await driveFetch(token, `${DRIVE}/files/${id}?alt=media`);
   return res.text();

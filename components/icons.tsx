@@ -1,10 +1,11 @@
 // Inline SVG icons (Lucide-style, 24x24, currentColor stroke) so we never ship
 // emojis as UI icons (they render differently per platform/OS).
 
-type IconProps = { className?: string };
+type IconProps = { className?: string; style?: React.CSSProperties };
 
 function Stroke({
   className,
+  style,
   children,
 }: IconProps & { children: React.ReactNode }) {
   return (
@@ -16,6 +17,7 @@ function Stroke({
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={style}
       aria-hidden="true"
     >
       {children}
@@ -76,6 +78,12 @@ export const NoteIcon = ({ className }: IconProps) => (
   <Stroke className={className}>
     <path d="M4 4a2 2 0 0 1 2-2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
     <path d="M14 2v6h6M8 13h8M8 17h5" />
+  </Stroke>
+);
+
+export const SpinnerIcon = ({ className, style }: IconProps) => (
+  <Stroke className={className} style={style}>
+    <path d="M12 3a9 9 0 1 0 9 9" />
   </Stroke>
 );
 

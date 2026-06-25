@@ -44,10 +44,19 @@ export interface SaveResult {
   modifiedTime?: string;
 }
 
+export interface MemoPage {
+  memos: MemoMeta[];
+  nextPageToken: string | null;
+}
+
 export const api = {
-  async listMemos(): Promise<MemoMeta[]> {
-    const d = await json<{ memos: MemoMeta[] }>(await fetch("/api/memos"));
-    return d.memos;
+  // One page of memos (newest first). Omit pageToken for the first page;
+  // pass the previous response's nextPageToken to load the next page.
+  async listMemos(pageToken?: string): Promise<MemoPage> {
+    const url = pageToken
+      ? `/api/memos?pageToken=${encodeURIComponent(pageToken)}`
+      : "/api/memos";
+    return json<MemoPage>(await fetch(url));
   },
   async getMemo(id: string): Promise<MemoContent> {
     return json(await fetch(`/api/memos/${encodeURIComponent(id)}`));

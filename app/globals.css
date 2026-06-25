@@ -46,6 +46,8 @@
     background: var(--color-canvas);
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+    /* We implement our own pull-to-refresh — suppress the browser's. */
+    overscroll-behavior-y: none;
   }
   body {
     background: var(--color-canvas);

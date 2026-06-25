@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getDriveAccessToken } from "@/lib/auth-token";
 import { getFolderId } from "@/lib/folder-store";
-import { listMarkdown, readFile, createTextFile } from "@/lib/drive/client";
+import {
+  listMarkdown,
+  listMarkdownPage,
+  readFile,
+  createTextFile,
+} from "@/lib/drive/client";
 import { parseMeta, serializeMemo } from "@/lib/markdown/frontmatter";
 import { slugify, uniqueFilename } from "@/lib/markdown/slug";
 import { memoInputSchema } from "@/lib/validation";
@@ -19,14 +24,25 @@ export async function GET(req: NextRequest) {
       { status: 409 },
     );
 
+  const url = new URL(req.url);
+  const pageToken = url.searchParams.get("pageToken") ?? undefined;
+  const PAGE_SIZE = 10;
+
   try {
-    const files = await listMarkdown(auth.token, folderId);
+    // Only this page's files have their content read (newest first), so the
+    // initial list is fast even when the folder holds many memos.
+    const { files, nextPageToken } = await listMarkdownPage(
+      auth.token,
+      folderId,
+      PAGE_SIZE,
+      pageToken,
+    );
     const memos: MemoMeta[] = await Promise.all(
       files.map(async (f) =>
         parseMeta(f.id, f.name, await readFile(auth.token, f.id), f.modifiedTime),
       ),
     );
-    return NextResponse.json({ memos });
+    return NextResponse.json({ memos, nextPageToken: nextPageToken ?? null });
   } catch (e) {
     const r = errorResponse(e);
     return NextResponse.json({ error: r.error }, { status: r.status });

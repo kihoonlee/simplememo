@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { api } from "@/lib/api-client";
-import type { MemoMeta } from "@/lib/types";
+import { useMemoList } from "@/lib/hooks/useMemoList";
+import { usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
 import {
   PlusIcon,
   SearchIcon,
@@ -13,9 +14,12 @@ import {
   ExternalLinkIcon,
   LogOutIcon,
   NoteIcon,
+  SpinnerIcon,
 } from "@/components/icons";
 
 type Filter = { type: "all" | "folder" | "tag"; value?: string };
+
+const PULL_THRESHOLD = 70; // keep in sync with usePullToRefresh
 
 function uniq(arr: string[]): string[] {
   return Array.from(new Set(arr));
@@ -28,8 +32,10 @@ function shortDate(iso?: string): string {
 }
 
 export default function HomePage() {
-  const [memos, setMemos] = useState<MemoMeta[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { memos, error, loading, loadingMore, hasMore, refresh, loadMore } =
+    useMemoList();
+  const { pull, refreshing } = usePullToRefresh(refresh);
+
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>({ type: "all" });
   const [folderInfo, setFolderInfo] = useState<{
@@ -39,26 +45,19 @@ export default function HomePage() {
 
   useEffect(() => {
     api
-      .listMemos()
-      .then(setMemos)
-      .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"));
-  }, []);
-
-  useEffect(() => {
-    api
       .getFolder()
       .then(setFolderInfo)
       .catch(() => {});
   }, []);
 
   const folders = useMemo(
-    () => uniq((memos ?? []).flatMap((m) => (m.folder ? [m.folder] : []))),
+    () => uniq(memos.flatMap((m) => (m.folder ? [m.folder] : []))),
     [memos],
   );
-  const tags = useMemo(() => uniq((memos ?? []).flatMap((m) => m.tags)), [memos]);
+  const tags = useMemo(() => uniq(memos.flatMap((m) => m.tags)), [memos]);
 
   const filtered = useMemo(() => {
-    let list = memos ?? [];
+    let list = memos;
     if (filter.type === "folder")
       list = list.filter((m) => m.folder === filter.value);
     if (filter.type === "tag")
@@ -68,6 +67,7 @@ export default function HomePage() {
       list = list.filter(
         (m) =>
           m.title.toLowerCase().includes(needle) ||
+          (m.excerpt?.toLowerCase().includes(needle) ?? false) ||
           m.tags.some((t) => t.toLowerCase().includes(needle)) ||
           (m.folder?.toLowerCase().includes(needle) ?? false),
       );
@@ -76,6 +76,23 @@ export default function HomePage() {
 
   const isActive = (f: Filter) =>
     f.type === filter.type && f.value === filter.value;
+
+  // Infinite scroll: load the next page when the sentinel nears the viewport.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) void loadMore();
+      },
+      { rootMargin: "240px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
+
+  const pullProgress = Math.min(pull / PULL_THRESHOLD, 1);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -90,8 +107,27 @@ export default function HomePage() {
         </button>
       </header>
 
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="flex items-center justify-center overflow-hidden text-ink-subtle transition-[height] duration-200"
+        style={{ height: refreshing ? 44 : pull }}
+        aria-hidden={!refreshing}
+      >
+        <SpinnerIcon
+          className={"h-5 w-5 " + (refreshing ? "animate-spin" : "")}
+          style={
+            refreshing
+              ? undefined
+              : {
+                  opacity: pullProgress,
+                  transform: `rotate(${pullProgress * 270}deg)`,
+                }
+          }
+        />
+      </div>
+
       {folderInfo?.folderName && (
-        <div className="flex items-center gap-1.5 px-4 pt-3 text-xs text-ink-subtle">
+        <div className="flex items-center gap-1.5 px-4 pt-1 text-xs text-ink-subtle">
           <FolderIcon className="h-3.5 w-3.5 shrink-0" />
           <span>저장 위치</span>
           {folderInfo.folderLink ? (
@@ -122,7 +158,7 @@ export default function HomePage() {
             id="memo-search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="제목·태그 검색"
+            placeholder="제목·내용·태그 검색"
             className="w-full rounded-xl border border-transparent bg-surface py-2.5 pl-9 pr-3 text-sm text-ink shadow-sm outline-none placeholder:text-ink-subtle focus:border-brand"
           />
         </div>
@@ -166,12 +202,12 @@ export default function HomePage() {
             {error}
           </p>
         )}
-        {!error && memos === null && (
+        {!error && loading && (
           <p className="py-16 text-center text-sm text-ink-subtle">
             불러오는 중…
           </p>
         )}
-        {!error && memos !== null && filtered.length === 0 && (
+        {!error && !loading && filtered.length === 0 && !hasMore && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-line text-ink-subtle">
               <NoteIcon className="h-7 w-7" />
@@ -185,6 +221,7 @@ export default function HomePage() {
             </p>
           </div>
         )}
+
         <ul className="flex flex-col gap-2.5">
           {filtered.map((m) => (
             <li key={m.id}>
@@ -226,6 +263,14 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
+
+        {/* Infinite-scroll sentinel + loading row */}
+        <div ref={sentinelRef} aria-hidden="true" className="h-px" />
+        {loadingMore && (
+          <div className="flex justify-center py-5">
+            <SpinnerIcon className="h-5 w-5 animate-spin text-ink-subtle" />
+          </div>
+        )}
       </main>
 
       <Link
