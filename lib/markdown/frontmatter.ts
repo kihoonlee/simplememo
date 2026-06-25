@@ -57,7 +57,21 @@ export function makeExcerpt(body: string, max = 100): string {
   return text.length > max ? text.slice(0, max).trimEnd() + "…" : text;
 }
 
+function stripMdExt(name: string): string {
+  return name.replace(/\.md$/i, "").trim();
+}
+
+// epoch(<=0) or unparseable means the frontmatter had no real date, so we fall
+// back to Drive's modifiedTime (the file's registration/last-modified time)
+// instead of showing 1970-01-01.
+function isMissingDate(iso: string): boolean {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) || t <= 0;
+}
+
 // Parse the frontmatter + a body preview for the list/index (no full body).
+// For files not created by SimpleMemo (no title/date frontmatter), fall back to
+// the filename for the title and to Drive's modifiedTime for the dates.
 export function parseMeta(
   id: string,
   name: string,
@@ -65,12 +79,18 @@ export function parseMeta(
   modifiedTime?: string,
 ): import("@/lib/types").MemoMeta {
   const memo = parseMemo(id, raw);
+  const hasTitle = Boolean(memo.title) && memo.title !== "(제목 없음)";
+  const title = hasTitle ? memo.title : stripMdExt(name) || "메모";
+  const created =
+    isMissingDate(memo.created) && modifiedTime ? modifiedTime : memo.created;
+  const updated =
+    isMissingDate(memo.updated) && modifiedTime ? modifiedTime : memo.updated;
   return {
     id,
     name,
-    title: memo.title,
-    created: memo.created,
-    updated: memo.updated,
+    title,
+    created,
+    updated,
     folder: memo.folder,
     tags: memo.tags,
     modifiedTime,

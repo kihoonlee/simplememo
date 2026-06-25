@@ -70,6 +70,45 @@ describe("frontmatter round-trip", () => {
   });
 });
 
+describe("parseMeta fallbacks for non-SimpleMemo files", () => {
+  it("falls back to the filename when there is no title", () => {
+    const meta = parseMeta(
+      "id1",
+      "Working Memory.md",
+      "프론트매터 없는 본문",
+      "2026-06-20T08:00:00.000Z",
+    );
+    expect(meta.title).toBe("Working Memory");
+  });
+
+  it("uses Drive modifiedTime when frontmatter has no date (no 1970)", () => {
+    const meta = parseMeta(
+      "id2",
+      "x.md",
+      "본문만",
+      "2026-06-20T08:00:00.000Z",
+    );
+    expect(meta.updated).toBe("2026-06-20T08:00:00.000Z");
+    expect(meta.created).toBe("2026-06-20T08:00:00.000Z");
+    expect(new Date(meta.updated).getFullYear()).toBe(2026);
+  });
+
+  it("keeps real frontmatter title/date over fallbacks", () => {
+    const md = serializeMemo(
+      {
+        title: "진짜 제목",
+        created: "2026-05-01T00:00:00.000Z",
+        updated: "2026-05-02T00:00:00.000Z",
+        tags: [],
+      },
+      "본문",
+    );
+    const meta = parseMeta("id3", "slug.md", md, "2026-06-20T08:00:00.000Z");
+    expect(meta.title).toBe("진짜 제목");
+    expect(meta.updated).toBe("2026-05-02T00:00:00.000Z");
+  });
+});
+
 describe("makeExcerpt", () => {
   it("strips markdown syntax for a clean preview", () => {
     const ex = makeExcerpt(
