@@ -34,6 +34,9 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(memoId));
+  // Initial editor body, fixed at mount time (EditorPane reads it once). Held in
+  // state so the render path never reads bodyRef.current (react-hooks/refs).
+  const [initialBody, setInitialBody] = useState("");
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,6 +134,7 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
         tagsRef.current = m.tags;
         bodyRef.current = m.body;
         modifiedRef.current = m.modifiedTime;
+        setInitialBody(m.body);
         setTitle(m.title);
         setFolder(m.folder ?? "");
         setTagsText(m.tags.join(", "));
@@ -236,7 +240,7 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
         </div>
       ) : (
         <EditorPane
-          initialValue={bodyRef.current}
+          initialValue={initialBody}
           onChange={onEditorChange}
           onImageUpload={onImageUpload}
         />

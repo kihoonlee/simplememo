@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSession } from "next-auth/react";
 import SignIn from "./SignIn";
 import FolderPicker from "./FolderPicker";
@@ -18,20 +18,19 @@ function FullScreen({ children }: { children: React.ReactNode }) {
 export default function AppGate({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const [folderId, setFolderId] = useState<string | null | undefined>(undefined);
-  const [debugBypass, setDebugBypass] = useState(false);
 
   // Dev-only: `?debug=1` skips the auth gate so the editor can be exercised in
-  // E2E without a real Google session. Set in an effect (not during render) so
-  // server and first client render match — no hydration mismatch. Compiled out
-  // of production builds; API routes still enforce auth regardless.
-  useEffect(() => {
-    if (
+  // E2E without a real Google session. Read via useSyncExternalStore so the
+  // server snapshot (false) matches the first client render — no hydration
+  // mismatch — then resolves to the real URL value on the client. Effectively
+  // off in production; API routes still enforce auth regardless.
+  const debugBypass = useSyncExternalStore(
+    () => () => {},
+    () =>
       process.env.NODE_ENV !== "production" &&
-      new URLSearchParams(window.location.search).get("debug") === "1"
-    ) {
-      setDebugBypass(true);
-    }
-  }, []);
+      new URLSearchParams(window.location.search).get("debug") === "1",
+    () => false,
+  );
 
   useEffect(() => {
     if (status !== "authenticated") return;

@@ -18,10 +18,16 @@ interface Props {
 function EditorPaneImpl({ initialValue, onChange, onImageUpload }: Props) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
   const onImageRef = useRef(onImageUpload);
-  onImageRef.current = onImageUpload;
   const initialRef = useRef(initialValue);
+
+  // Keep callback refs current without remounting. The component never
+  // re-renders (memo below), so in practice this runs once on mount; assigning
+  // in an effect (not during render) satisfies react-hooks/refs.
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onImageRef.current = onImageUpload;
+  });
 
   useEffect(() => {
     let editor: ToastEditor | null = null;
