@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { api } from "@/lib/api-client";
 import { useMemoList } from "@/lib/hooks/useMemoList";
 import { usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
+import { usePullToLoadMore } from "@/lib/hooks/usePullToLoadMore";
 import type { FileItem, MemoMeta } from "@/lib/types";
 import {
   PlusIcon,
@@ -46,6 +47,7 @@ export default function HomePage() {
   const { items, error, loading, loadingMore, hasMore, refresh, loadMore } =
     useMemoList();
   const { pull, refreshing } = usePullToRefresh(refresh);
+  const { pull: pullUp } = usePullToLoadMore(loadMore, hasMore);
 
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>({ type: "all" });
@@ -116,22 +118,8 @@ export default function HomePage() {
     }
   }
 
-  // Infinite scroll: load the next page when the sentinel nears the viewport.
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) void loadMore();
-      },
-      { rootMargin: "240px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore]);
-
   const pullProgress = Math.min(pull / PULL_THRESHOLD, 1);
+  const pullUpProgress = Math.min(pullUp / PULL_THRESHOLD, 1);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -305,13 +293,33 @@ export default function HomePage() {
           )}
         </ul>
 
-        {/* Infinite-scroll sentinel + loading row */}
-        <div ref={sentinelRef} aria-hidden="true" className="h-px" />
-        {loadingMore && (
-          <div className="flex justify-center py-5">
+        {/* Pull-up to load older memos (mirror of pull-to-refresh at the top) */}
+        {loadingMore ? (
+          <div className="flex items-center justify-center py-5">
             <SpinnerIcon className="h-5 w-5 animate-spin text-ink-subtle" />
           </div>
-        )}
+        ) : pullUp > 0 ? (
+          <div
+            className="flex items-center justify-center overflow-hidden"
+            style={{ height: Math.max(pullUp, 8) }}
+            aria-hidden="true"
+          >
+            <SpinnerIcon
+              className="h-5 w-5 text-ink-subtle"
+              style={{
+                opacity: pullUpProgress,
+                transform: `rotate(${pullUpProgress * 270}deg)`,
+              }}
+            />
+          </div>
+        ) : hasMore && !loading ? (
+          <button
+            onClick={() => void loadMore()}
+            className="w-full py-4 text-center text-xs font-medium text-ink-subtle transition-colors hover:text-ink"
+          >
+            위로 당기거나 탭하여 이전 메모 더 보기
+          </button>
+        ) : null}
       </main>
 
       <Link
