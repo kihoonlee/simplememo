@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api-client";
+import { FolderIcon } from "./icons";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -107,38 +108,59 @@ export default function FolderPicker({
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-5 p-8 text-center">
-      <div>
-        <h1 className="text-xl font-medium">메모를 저장할 폴더 선택</h1>
-        <p className="mt-2 max-w-xs text-sm text-neutral-500">
-          새 메모는 선택한 구글 드라이브 폴더에 <code>.md</code>로 저장됩니다.
-        </p>
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 p-8 text-center">
+      <div className="flex flex-col items-center gap-4">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+          <FolderIcon className="h-8 w-8" />
+        </span>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-ink">
+            메모를 저장할 폴더 선택
+          </h1>
+          <p className="mt-2 max-w-xs text-sm text-ink-muted">
+            새 메모는 선택한 구글 드라이브 폴더에{" "}
+            <code className="rounded bg-canvas px-1 py-0.5 font-mono text-[0.85em]">
+              .md
+            </code>
+            로 저장됩니다.
+          </p>
+        </div>
       </div>
 
       {configured ? (
         <button
           onClick={openPicker}
           disabled={busy}
-          className="rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm font-medium shadow-sm transition hover:bg-neutral-50 active:scale-[0.98] disabled:opacity-50"
+          className="flex min-h-[52px] w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-on-brand shadow-sm transition-colors hover:bg-brand-hover disabled:opacity-60"
         >
-          드라이브에서 폴더 선택
+          <FolderIcon className="h-5 w-5 shrink-0" />
+          {busy ? "여는 중…" : "드라이브에서 폴더 선택"}
         </button>
       ) : (
-        <p className="max-w-xs rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800">
-          Picker 설정값(<code>NEXT_PUBLIC_GOOGLE_*</code>)이 없습니다. 아래로 앱
-          전용 폴더를 만들거나 <code>SETUP.md</code>를 완료하세요.
+        <p className="max-w-xs rounded-lg bg-warn-soft px-4 py-3 text-xs text-warn-ink">
+          Picker 설정값(
+          <code className="font-mono">NEXT_PUBLIC_GOOGLE_*</code>)이 없습니다.
+          아래로 앱 전용 폴더를 만들거나{" "}
+          <code className="font-mono">SETUP.md</code>를 완료하세요.
         </p>
       )}
 
       <button
         onClick={createAppFolder}
         disabled={busy}
-        className="text-sm text-neutral-500 underline underline-offset-4 hover:text-neutral-800 disabled:opacity-50"
+        className="min-h-[44px] text-sm font-medium text-ink-muted underline underline-offset-4 transition-colors hover:text-ink disabled:opacity-50"
       >
         앱 전용 ‘SimpleMemo’ 폴더 새로 만들기
       </button>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg bg-danger-soft px-4 py-2 text-sm text-danger"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -19,4 +19,5 @@ export interface MemoMeta extends MemoFrontmatter {
   id: string; // Drive fileId
   name: string; // Drive filename, e.g. "출시-회고.md"
   modifiedTime?: string; // Drive modifiedTime (RFC 3339) for conflict detection
+  excerpt?: string; // plain-text body preview for list cards
 }

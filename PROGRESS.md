@@ -1,47 +1,72 @@
 # PROGRESS — SimpleMemo
 
 > 개인용 모바일 메모 웹앱. 위지윅으로 작성하고 구글 드라이브에 `.md`로 저장.
+> 마지막 업데이트: 2026-06-25 | 브랜치: main | 최근 커밋: 7ac64f7
 
-## 현재 상태 (2026-06-21)
+## 현재 상태 (2026-06-25)
 
-핵심 기능(Phase 1–7) 구현 완료. **빌드·타입체크·유닛테스트 모두 통과.**
-실제 구글 로그인/드라이브 저장(라이브)은 OAuth 자격증명 입력 후 동작.
+핵심 기능(Phase 1–7) 구현 완료 + **Vercel 프로덕션 배포 완료 + Google OAuth 도메인 등록 완료.**
+빌드·린트·타입체크·유닛·E2E 전부 통과. 이제 **실사용 라이브 검증(로그인→작성→Drive 저장)** 단계만 남음.
 
-### 검증 (실행 결과)
-- `npm run build` → 성공 (8 라우트 컴파일)
-- `npm run typecheck` → 0 에러
-- `npm test` → 11/11 통과 (frontmatter 왕복, slug)
-- **라이브 검증** (dev 서버 + 실제 자격증명): `/api/auth/providers` 200 + Google provider 활성, 로그인 리다이렉트 URL에 `drive.file`·`access_type=offline`·`prompt=consent` 포함 확인. 구글 로그인 통과 → 폴더 선택 화면 도달.
-- **UI 수정**: OS 다크모드에서 흰 버튼 위 글자가 안 보이던 문제 → 라이트 테마로 고정(`app/globals.css`, `color-scheme: light`). 헤드리스 스크린샷으로 대비 확인.
-- **PWA**: `next build`에 `/manifest.webmanifest`·`/apple-icon`(PNG) 라우트 생성 + 자산 서빙 확인(200, 올바른 content-type). Turbopack 비호환 `@serwist/next`·`serwist` 제거, 직접 작성한 경량 서비스워커(`public/sw.js`)로 대체.
-- **E2E**: Playwright(mobile-chrome 뷰포트) **5/5 통과** — 로그인 화면 렌더, 매니페스트 standalone, `drive.file` 위임, +에디터 위지윅 본문 입력/제목 입력 (`npm run test:e2e`).
-- **버그픽스(작성 불가)**: Toast UI `height:100%`가 flex 컨테이너에서 미해석 → 위지윅 편집 영역이 붕괴(약 74→36px)되어 본문 입력 불가였음. 편집 컨테이너를 `relative` + 내부 `absolute inset-0`로 바꿔 확정 높이 부여 → 해결. Red(되돌리면 height 36, 실패)-Green(복구 578, 통과) E2E로 가드. dev-전용 `?debug=1` 게이트 우회는 프로덕션 빌드에서 제거됨.
-- **버그픽스(저장 시 `removeChild` 에러)**: Toast UI 내부 렌더러가 관리하는 DOM을 부모 컴포넌트 재렌더가 건드려 동기화가 깨지던 클래스. 에디터를 `EditorPane`(memo + mount-once + 콜백 ref)로 분리해 React 재렌더와 격리. 헤드리스 3회 재현(401/replaceState/mock-201)은 모두 에러 미발생 → 실제 인증·IME·타이밍 의존 추정, 정석 격리로 대응(사용자 재검증 필요).
-- **기능/진단(저장 위치 표시)**: 목록 상단에 현재 대상 폴더명 + Drive 링크 표시(`GET /api/folder`가 `folderName/folderLink`도 반환). "리스트엔 보이는데 그 폴더엔 파일이 없다" → 앱이 **다른 폴더(예: 앱 생성 `SimpleMemo`)** 또는 **다른 구글 계정**을 쓰는 중임을 즉시 확인 가능.
-- **폴더 강제 저장(사용자 요청)**: 모든 메모를 지정 폴더(`1draG…`)에 **무조건** 저장. `SMEMO_FOLDER_ID` env로 폴더 고정(Picker/쿠키 무시, `lib/folder-store.ts`). 기존(앱이 안 만든) 폴더에 쓰려면 권한이 필요해 OAuth 스코프를 `drive.file`→**풀 `drive`**로 확대(`auth.ts`). 적용하려면 **로그아웃→로그인** 재동의 필수. 기존 메모 2개는 이전 폴더(`163p1…`)에 남아 있어 수동 이동 필요.
+- **앱 URL**: https://simplememo-neon.vercel.app
+- **Vercel 프로젝트**: `kihoons-projects-8f5230eb/simplememo` (계정 `powergenes-5279`)
+- **GitHub**: `kihoonlee/simplememo` 연동 → `git push` 시 Vercel 자동 재배포
+- **Google OAuth**: 배포 도메인 origin + `/api/auth/callback/google` 등록 완료(2026-06-25)
 
-### 구현 범위
-- **인증**: Auth.js v5 구글 OAuth(`drive.file`), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`, `next-auth.d.ts`
-- **드라이브**: REST 래퍼(list/read/create/update/trash/이미지 업로드+링크공유/`images` 폴더 보장/앱폴더 생성) — `lib/drive/client.ts`
-- **API 라우트**: `/api/memos`(목록·생성), `/api/memos/[id]`(조회·수정·삭제·충돌감지), `/api/images`(업로드), `/api/folder`(Picker 선택/앱폴더 생성)
-- **UI**: `AppGate`/`SignIn`/`FolderPicker`(Google Picker + 앱폴더 폴백), 목록+검색+폴더/태그 필터(`app/page.tsx`), `MemoEditor`(Toast UI 위지윅 + 디바운스 자동저장 + 저장상태 + 충돌 덮어쓰기)
-- **저장 형식**: `{제목}.md` + YAML frontmatter(title/created/updated/folder/tags) — `lib/markdown/*`
-- **로컬 초안**: IndexedDB — `lib/store/db.ts`
-- **검증**: zod — `lib/validation.ts`. 유닛테스트 — `lib/markdown/*.test.ts`
+## 최근 작업 내역
 
-### 설정 / 실행
-1. `SETUP.md`대로 구글 클라우드 OAuth 설정 → `.env.local` 채우기
-2. `npm run dev` → http://localhost:3000
-- 확정 결정: 개인용 / Next.js+Vercel / Toast UI Editor / `drive.file`+Picker / 이미지 링크공유 / 온라인우선+자동저장+로컬초안.
-- ⚠️ 구글 동의화면 **User Type은 External**(개인 Gmail). Internal이면 `org_internal`로 로그인 차단됨. 테스트 사용자에 본인 계정 추가.
+| 날짜 | 작업 | 커밋 | 비고 |
+|------|------|------|------|
+| 2026-06-25 | **Vercel 배포 완료** (link→env 8개→`--prod`), Google OAuth 도메인 등록, [DEPLOY.md](DEPLOY.md) 작성 | 7ac64f7 | 안정 도메인 `simplememo-neon.vercel.app` |
+| 2026-06-25 | **lint 회귀 4건 수정** (React 19 새 hooks 규칙) — 동작 보존 | 7ac64f7 | EditorPane/MemoEditor/AppGate |
+| 2026-06-25 | playwright 포트 파라미터화(`PORT` env) — 타 앱 3000 점유 충돌 회피 | 7ac64f7 | `PORT=3010 npm run test:e2e` |
+| 2026-06-21 | 메모를 지정 폴더에 강제 저장(`SMEMO_FOLDER_ID`) + 풀 drive 스코프 | 51316df | Picker/쿠키 무시 |
+| 2026-06-21 | 목록에 '저장 위치'(폴더명+Drive 링크) 표시 | a136edc | 저장 폴더 진단용 |
+| 2026-06-21 | 저장 시 Toast UI `removeChild` 에러 대응(EditorPane 격리) | 7a746f8 | 실인증 재검증 필요 |
+| 2026-06-21 | 위지윅 편집영역 높이 붕괴(본문 작성 불가) 수정 | b2412c5 | relative+absolute inset-0 |
 
-### 알려진 한계 / 미완
-- 인증·폴더선택 화면까지 라이브 확인됨. **메모 작성→드라이브 `.md` 저장까지의 인터랙티브 플로우는 사용자 테스트 진행 중.**
-- PWA 설치형 동작(서비스워커 install)은 프로덕션 빌드/배포에서 최종 확인 필요(매니페스트·아이콘·SW 코드·자산은 완료).
-- 목록은 매 로드 시 전 메모 content를 읽어 메타 파싱 — 메모 수 많으면 느려질 수 있음(IndexedDB 메타 캐시로 최적화 여지).
-- 이미지 URL은 `drive.google.com/uc?id=` 형식 — 외부 뷰어 렌더는 라이브 확인 필요.
+## 배포 (Vercel) — 요약
 
-### 다음 작업
-- **C: 라이브 기능 검증** — 메모 작성→드라이브 `.md` 저장/수정/삭제/이미지. 사용자 구글 로그인 필요.
-- **D: Vercel 배포** — 사용자 Vercel 계정 + 환경변수/redirect URI 등록 필요.
-- (선택) 목록 IndexedDB 메타 캐시, 이미지 외부 렌더 확인.
+상세 절차는 [DEPLOY.md](DEPLOY.md). 핵심:
+- 환경변수 8개 Production 등록 완료: `AUTH_SECRET`, `AUTH_GOOGLE_ID/SECRET`, `SMEMO_FOLDER_ID`, `NEXT_PUBLIC_*`×4. (`VERCEL_OIDC_TOKEN`은 Vercel 자동 관리)
+- Auth.js v5는 Vercel에서 `AUTH_URL`·`AUTH_TRUST_HOST` **불필요**(자동 추론). `AUTH_SECRET`만 필수.
+- 재배포: `git push`(자동) 또는 `vercel --prod --scope kihoons-projects-8f5230eb`.
+- 헬스체크 통과: 홈 200 · `/api/auth/providers` google 활성 · `/manifest.webmanifest` 200.
+
+## 검증 (실행 결과)
+
+- `npm run build` → 성공 (11 라우트) / `npm run typecheck` → 0 에러
+- `npm test` → 11/11 (frontmatter 왕복, slug)
+- `PORT=3010 npm run test:e2e` → **5/5** (로그인 렌더, manifest standalone, drive 위임, 위지윅 본문/제목 입력)
+- `npm run lint` → **0 에러** (이전 4건 회귀 → 0)
+
+## 구현 범위
+
+- **인증**: Auth.js v5 구글 OAuth(풀 `drive` 스코프), 토큰 서버 세션 전용 + refresh — `auth.ts`, `lib/auth-token.ts`
+- **드라이브**: REST 래퍼(list/read/create/update/trash/이미지 업로드+링크공유/`images` 폴더 보장) — `lib/drive/client.ts`
+- **폴더 결정**: `lib/folder-store.ts` — `SMEMO_FOLDER_ID`(강제) > 쿠키(Picker 선택) > 없음(409)
+- **API**: `/api/memos`(목록·생성), `/api/memos/[id]`(조회·수정·삭제·충돌감지), `/api/images`, `/api/folder`
+- **UI**: `AppGate`/`SignIn`/`FolderPicker`, 목록+검색+필터(`app/page.tsx`), `MemoEditor`(Toast UI 위지윅 + 디바운스 자동저장 + 충돌 덮어쓰기), `EditorPane`(에디터 격리)
+- **저장 형식**: `{제목}.md` + YAML frontmatter — `lib/markdown/*`
+- **로컬 초안**: IndexedDB — `lib/store/db.ts` / **검증**: zod — `lib/validation.ts`
+
+## 알려진 이슈 / 주의사항
+
+- **라이브 저장 플로우는 실사용 검증 진행 중** — 도메인·OAuth 등록까지 완료됐으므로 이제 프로덕션에서 로그인→작성→Drive 저장이 실제로 되는지만 확인하면 됨.
+- 풀 `drive` 스코프 변경 이력 → 프로덕션 최초 로그인 시 Drive 권한 **재동의** 필요할 수 있음(권한 누락 시 로그아웃→재로그인).
+- 저장 시 `removeChild` 에러: EditorPane 격리로 대응했으나 헤드리스 재현 안 됨 → 실인증·IME 환경 재검증 필요.
+- 기존 메모 2개가 이전 폴더(`163p1…`)에 남아 있어 `SMEMO_FOLDER_ID` 폴더(`1draG…`)로 수동 이동 필요.
+- 목록은 매 로드 시 전 메모 content 파싱 → 메모 많아지면 느려질 수 있음(IndexedDB 메타 캐시 여지).
+
+## 다음 작업
+
+1. **라이브 저장 검증** — 프로덕션(또는 로컬)에서 로그인→메모 작성→`1draG…` 폴더에 `.md` 저장/수정/삭제/이미지 확인.
+2. 기존 메모 2개 폴더 이동(`163p1…` → `1draG…`).
+3. (선택) 목록 IndexedDB 메타 캐시, 이미지 외부 뷰어 렌더 확인, PWA 설치형 동작 최종 확인.
+
+## 환경 / 개발 메모 (다른 PC에서 이어받을 때)
+
+- **`.env.local` 필수** — `.env.example` 복사 후 채움(`SETUP.md`). gitignore라 clone 시 안 따라옴. ⚠️ 파일명 점(`.`) 빠뜨리지 말 것(`env.local`이면 Next.js가 못 읽음).
+- 의존성: `npm install` → `npx playwright install chromium`(E2E용).
+- **git push (개인 repo)**: remote는 SSH alias `git@github-kihoonlee:kihoonlee/simplememo.git` 사용(Mac 키 `~/.ssh/mac_ssh`). HTTPS는 비대화형에서 비밀번호 막힘.
+- 로컬 dev 포트 3000이 타 앱에 점유되면 `PORT=3010 npm run dev` / `PORT=3010 npm run test:e2e`.

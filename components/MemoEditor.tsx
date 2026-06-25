@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { saveDraft, clearDraft } from "@/lib/store/db";
 import EditorPane from "./EditorPane";
+import { ArrowLeftIcon, TrashIcon, FolderIcon, HashIcon } from "./icons";
 
 type Status = "idle" | "saving" | "saved" | "error" | "conflict";
 
@@ -187,55 +188,60 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
 
   const statusColor =
     status === "saved"
-      ? "text-green-600"
+      ? "text-emerald-600"
       : status === "error" || status === "conflict"
-        ? "text-red-600"
-        : "text-neutral-400";
+        ? "text-danger"
+        : "text-ink-subtle";
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white px-3 py-2">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-surface">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-surface/85 px-2 py-2 backdrop-blur">
         <Link
           href="/"
-          className="px-2 py-1 text-neutral-500 hover:text-neutral-800"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
           aria-label="목록으로"
         >
-          ←
+          <ArrowLeftIcon className="h-5 w-5" />
         </Link>
-        <span className={"text-xs " + statusColor}>{STATUS_LABEL[status]}</span>
+        <span className={"text-xs font-medium " + statusColor}>
+          {STATUS_LABEL[status]}
+        </span>
         <button
           onClick={onDelete}
-          className="px-2 py-1 text-neutral-500 hover:text-red-600"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger"
           aria-label="삭제"
         >
-          삭제
+          <TrashIcon className="h-5 w-5" />
         </button>
       </header>
 
       {status === "conflict" && (
-        <div className="flex items-center justify-between gap-2 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+        <div className="flex items-center justify-between gap-2 bg-warn-soft px-4 py-2 text-xs text-warn-ink">
           <span>다른 곳에서 먼저 수정되었습니다.</span>
           <button
             onClick={() => void doSave(true)}
-            className="rounded border border-amber-300 px-2 py-1 hover:bg-amber-100"
+            className="rounded-lg border border-warn-ink/30 px-2.5 py-1 font-medium transition-colors hover:bg-warn-ink/10"
           >
             덮어쓰기
           </button>
         </div>
       )}
       {errorMsg && (
-        <div className="bg-red-50 px-4 py-2 text-xs text-red-700">{errorMsg}</div>
+        <div role="alert" className="bg-danger-soft px-4 py-2 text-xs text-danger">
+          {errorMsg}
+        </div>
       )}
 
       <input
         value={title}
         onChange={(e) => onTitle(e.target.value)}
         placeholder="제목"
-        className="px-4 pt-3 pb-1 text-lg font-medium outline-none"
+        aria-label="제목"
+        className="bg-transparent px-4 pt-4 pb-2 text-xl font-bold text-ink outline-none placeholder:text-ink-subtle"
       />
 
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-neutral-400">
+        <div className="flex flex-1 items-center justify-center text-sm text-ink-subtle">
           불러오는 중…
         </div>
       ) : (
@@ -246,19 +252,27 @@ export default function MemoEditor({ memoId }: { memoId?: string }) {
         />
       )}
 
-      <footer className="flex flex-col gap-1 border-t border-neutral-200 px-4 py-2">
-        <input
-          value={folder}
-          onChange={(e) => onFolder(e.target.value)}
-          placeholder="폴더 (선택)"
-          className="text-xs text-neutral-600 outline-none placeholder:text-neutral-400"
-        />
-        <input
-          value={tagsText}
-          onChange={(e) => onTags(e.target.value)}
-          placeholder="태그 (쉼표로 구분)"
-          className="text-xs text-neutral-600 outline-none placeholder:text-neutral-400"
-        />
+      <footer className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-3">
+        <div className="flex items-center gap-2">
+          <FolderIcon className="h-4 w-4 shrink-0 text-ink-subtle" />
+          <input
+            value={folder}
+            onChange={(e) => onFolder(e.target.value)}
+            placeholder="폴더 (선택)"
+            aria-label="폴더"
+            className="w-full bg-transparent text-xs text-ink-muted outline-none placeholder:text-ink-subtle"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <HashIcon className="h-4 w-4 shrink-0 text-ink-subtle" />
+          <input
+            value={tagsText}
+            onChange={(e) => onTags(e.target.value)}
+            placeholder="태그 (쉼표로 구분)"
+            aria-label="태그"
+            className="w-full bg-transparent text-xs text-ink-muted outline-none placeholder:text-ink-subtle"
+          />
+        </div>
       </footer>
     </div>
   );

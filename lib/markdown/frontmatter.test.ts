@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { serializeMemo, parseMemo, parseMeta } from "@/lib/markdown/frontmatter";
+import {
+  serializeMemo,
+  parseMemo,
+  parseMeta,
+  makeExcerpt,
+} from "@/lib/markdown/frontmatter";
 
 describe("frontmatter round-trip", () => {
   it("serializes and parses back", () => {
@@ -46,7 +51,7 @@ describe("frontmatter round-trip", () => {
     expect(md).not.toContain("folder:");
   });
 
-  it("parseMeta carries name + modifiedTime without body", () => {
+  it("parseMeta carries name + modifiedTime + excerpt without body", () => {
     const md = serializeMemo(
       {
         title: "메타 테스트",
@@ -60,6 +65,32 @@ describe("frontmatter round-trip", () => {
     expect(meta.name).toBe("meta-test.md");
     expect(meta.title).toBe("메타 테스트");
     expect(meta.modifiedTime).toBe("2026-06-21T01:02:03.000Z");
+    expect(meta.excerpt).toBe("body here");
     expect((meta as unknown as { body?: string }).body).toBeUndefined();
+  });
+});
+
+describe("makeExcerpt", () => {
+  it("strips markdown syntax for a clean preview", () => {
+    const ex = makeExcerpt(
+      "## 회의록\n\n- [링크](http://example.com) 내용\n```js\ncode()\n```",
+    );
+    expect(ex).toContain("회의록");
+    expect(ex).toContain("링크");
+    expect(ex).toContain("내용");
+    expect(ex).not.toContain("#");
+    expect(ex).not.toContain("```");
+    expect(ex).not.toContain("http");
+    expect(ex).not.toContain("code()");
+  });
+
+  it("truncates long bodies with an ellipsis", () => {
+    const ex = makeExcerpt("가".repeat(200));
+    expect(ex.endsWith("…")).toBe(true);
+    expect(ex.length).toBeLessThanOrEqual(101);
+  });
+
+  it("returns empty string for an empty body", () => {
+    expect(makeExcerpt("")).toBe("");
   });
 });

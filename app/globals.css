@@ -1,19 +1,82 @@
 @import "tailwindcss";
 
-/* SimpleMemo is a light-themed UI. Force light so system dark mode does not
-   invert inherited text colors onto our white surfaces. */
+/* Pretendard is loaded via <link> in app/layout.tsx (a CSS @import after the
+   Tailwind import would be hoisted below Tailwind's rules and ignored). */
+
+/* SimpleMemo — light-themed design tokens. Forced light so system dark mode
+   never inverts inherited text colors onto our white surfaces. */
+@theme {
+  --font-sans:
+    "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  /* Brand / accent (Toss Blue family) */
+  --color-brand: #3182f6;
+  --color-brand-hover: #2b74e0;
+  --color-brand-soft: #e8f1fd;
+  --color-on-brand: #ffffff;
+
+  /* Surfaces */
+  --color-canvas: #f2f4f6; /* app background */
+  --color-surface: #ffffff; /* cards / inputs */
+  --color-line: #e5e8eb; /* borders */
+  --color-line-strong: #d1d6db;
+
+  /* Text — all AA-compliant on white/canvas except -subtle (meta/large only) */
+  --color-ink: #191f28; /* primary */
+  --color-ink-muted: #6b7684; /* secondary (~4.7:1) */
+  --color-ink-subtle: #8b95a1; /* tertiary / meta */
+
+  /* Feedback */
+  --color-danger: #e03131;
+  --color-danger-soft: #fff0f0;
+  --color-warn-soft: #fff9db;
+  --color-warn-ink: #8d6a00;
+
+  /* Radius scale */
+  --radius-card: 16px;
+}
+
 :root {
   color-scheme: light;
 }
 
-html {
-  background: #fafafa;
-}
+@layer base {
+  html {
+    background: var(--color-canvas);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
 
-body {
-  background: #fafafa;
-  color: #171717;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
-    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  /* Tailwind v4 ships cursor:default on buttons — restore pointer affordance. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
+  /* Visible keyboard focus everywhere (mouse clicks unaffected via :focus-visible). */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Respect reduced-motion globally. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

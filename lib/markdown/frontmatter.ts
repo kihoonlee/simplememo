@@ -43,7 +43,21 @@ export function parseMemo(id: string, raw: string): Memo {
   };
 }
 
-// Parse only the frontmatter for the list/index (cheaper, ignores body).
+// Plain-text preview of the markdown body for list cards (strips md syntax).
+export function makeExcerpt(body: string, max = 100): string {
+  const text = (body ?? "")
+    .replace(/```[\s\S]*?```/g, " ") // fenced code blocks
+    .replace(/`[^`]*`/g, " ") // inline code
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ") // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // links -> link text
+    .replace(/^#{1,6}\s+/gm, "") // heading markers
+    .replace(/[*_~>#|]/g, " ") // residual md symbols
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > max ? text.slice(0, max).trimEnd() + "…" : text;
+}
+
+// Parse the frontmatter + a body preview for the list/index (no full body).
 export function parseMeta(
   id: string,
   name: string,
@@ -60,5 +74,6 @@ export function parseMeta(
     folder: memo.folder,
     tags: memo.tags,
     modifiedTime,
+    excerpt: makeExcerpt(memo.body),
   };
 }
