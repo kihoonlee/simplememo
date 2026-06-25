@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { api } from "@/lib/api-client";
 import { useMemoList } from "@/lib/hooks/useMemoList";
 import { usePullToRefresh } from "@/lib/hooks/usePullToRefresh";
+import type { FileItem, MemoMeta } from "@/lib/types";
 import {
   PlusIcon,
   SearchIcon,
@@ -13,11 +14,14 @@ import {
   HashIcon,
   ExternalLinkIcon,
   LogOutIcon,
+  UploadIcon,
+  FileIcon,
   NoteIcon,
   SpinnerIcon,
 } from "@/components/icons";
 
 type Filter = { type: "all" | "folder" | "tag"; value?: string };
+type MemoEntry = MemoMeta & { kind: "memo" };
 
 const PULL_THRESHOLD = 70; // keep in sync with usePullToRefresh
 
@@ -31,8 +35,15 @@ function shortDate(iso?: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("ko-KR");
 }
 
+function formatSize(bytes?: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export default function HomePage() {
-  const { memos, error, loading, loadingMore, hasMore, refresh, loadMore } =
+  const { items, error, loading, loadingMore, hasMore, refresh, loadMore } =
     useMemoList();
   const { pull, refreshing } = usePullToRefresh(refresh);
 
@@ -43,6 +54,10 @@ export default function HomePage() {
     folderLink?: string | null;
   } | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   useEffect(() => {
     api
       .getFolder()
@@ -50,6 +65,10 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  const memos = useMemo(
+    () => items.filter((it): it is MemoEntry => it.kind === "memo"),
+    [items],
+  );
   const folders = useMemo(
     () => uniq(memos.flatMap((m) => (m.folder ? [m.folder] : []))),
     [memos],
@@ -57,25 +76,45 @@ export default function HomePage() {
   const tags = useMemo(() => uniq(memos.flatMap((m) => m.tags)), [memos]);
 
   const filtered = useMemo(() => {
-    let list = memos;
+    let list = items;
     if (filter.type === "folder")
-      list = list.filter((m) => m.folder === filter.value);
+      list = list.filter((it) => it.kind === "memo" && it.folder === filter.value);
     if (filter.type === "tag")
-      list = list.filter((m) => m.tags.includes(filter.value!));
+      list = list.filter(
+        (it) => it.kind === "memo" && it.tags.includes(filter.value!),
+      );
     const needle = q.trim().toLowerCase();
     if (needle)
-      list = list.filter(
-        (m) =>
-          m.title.toLowerCase().includes(needle) ||
-          (m.excerpt?.toLowerCase().includes(needle) ?? false) ||
-          m.tags.some((t) => t.toLowerCase().includes(needle)) ||
-          (m.folder?.toLowerCase().includes(needle) ?? false),
-      );
+      list = list.filter((it) => {
+        if (it.kind === "file") return it.name.toLowerCase().includes(needle);
+        return (
+          it.title.toLowerCase().includes(needle) ||
+          (it.excerpt?.toLowerCase().includes(needle) ?? false) ||
+          it.tags.some((t) => t.toLowerCase().includes(needle)) ||
+          (it.folder?.toLowerCase().includes(needle) ?? false)
+        );
+      });
     return list;
-  }, [memos, filter, q]);
+  }, [items, filter, q]);
 
   const isActive = (f: Filter) =>
     f.type === filter.type && f.value === filter.value;
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      await api.uploadFile(file);
+      await refresh();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "업로드에 실패했습니다");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   // Infinite scroll: load the next page when the sentinel nears the viewport.
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -98,14 +137,35 @@ export default function HomePage() {
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-canvas/85 px-4 py-3 backdrop-blur">
         <h1 className="text-lg font-bold tracking-tight text-ink">메모</h1>
-        <button
-          onClick={() => void signOut()}
-          className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-line hover:text-ink"
-        >
-          <LogOutIcon className="h-4 w-4" />
-          로그아웃
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-line hover:text-ink disabled:opacity-60"
+          >
+            {uploading ? (
+              <SpinnerIcon className="h-4 w-4 animate-spin" />
+            ) : (
+              <UploadIcon className="h-4 w-4" />
+            )}
+            업로드
+          </button>
+          <button
+            onClick={() => void signOut()}
+            className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-line hover:text-ink"
+          >
+            <LogOutIcon className="h-4 w-4" />
+            로그아웃
+          </button>
+        </div>
       </header>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={onPickFile}
+      />
 
       {/* Pull-to-refresh indicator */}
       <div
@@ -126,8 +186,17 @@ export default function HomePage() {
         />
       </div>
 
+      {uploadError && (
+        <p
+          role="alert"
+          className="mx-4 mt-1 rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger"
+        >
+          {uploadError}
+        </p>
+      )}
+
       {folderInfo?.folderName && (
-        <div className="flex items-center gap-1.5 px-4 pt-1 text-xs text-ink-subtle">
+        <div className="flex items-center gap-1.5 px-4 pt-2 text-xs text-ink-subtle">
           <FolderIcon className="h-3.5 w-3.5 shrink-0" />
           <span>저장 위치</span>
           {folderInfo.folderLink ? (
@@ -158,7 +227,7 @@ export default function HomePage() {
             id="memo-search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="제목·내용·태그 검색"
+            placeholder="제목·내용·파일명 검색"
             className="w-full rounded-xl border border-transparent bg-surface py-2.5 pl-9 pr-3 text-sm text-ink shadow-sm outline-none placeholder:text-ink-subtle focus:border-brand"
           />
         </div>
@@ -214,7 +283,7 @@ export default function HomePage() {
             </span>
             <p className="text-sm text-ink-muted">
               {q || filter.type !== "all"
-                ? "조건에 맞는 메모가 없습니다."
+                ? "조건에 맞는 항목이 없습니다."
                 : "아직 메모가 없습니다."}
               <br />
               오른쪽 아래 + 버튼으로 새로 작성하세요.
@@ -223,45 +292,17 @@ export default function HomePage() {
         )}
 
         <ul className="flex flex-col gap-2.5">
-          {filtered.map((m) => (
-            <li key={m.id}>
-              <Link
-                href={`/memo/${encodeURIComponent(m.id)}`}
-                className="block rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-sm transition-colors hover:border-line-strong"
-              >
-                <div className="truncate text-[15px] font-semibold text-ink">
-                  {m.title}
-                </div>
-                {m.excerpt && (
-                  <p className="mt-0.5 truncate text-xs text-ink-muted">
-                    {m.excerpt}
-                  </p>
-                )}
-                <div className="mt-1 text-xs text-ink-subtle">
-                  {shortDate(m.updated)}
-                </div>
-                {(m.tags.length > 0 || m.folder) && (
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                    {m.folder && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-canvas px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
-                        <FolderIcon className="h-3 w-3" />
-                        {m.folder}
-                      </span>
-                    )}
-                    {m.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-0.5 rounded-md bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand"
-                      >
-                        <HashIcon className="h-3 w-3" />
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </Link>
-            </li>
-          ))}
+          {filtered.map((it) =>
+            it.kind === "memo" ? (
+              <li key={it.id}>
+                <MemoCard m={it} />
+              </li>
+            ) : (
+              <li key={it.id}>
+                <FileCard f={it} />
+              </li>
+            ),
+          )}
         </ul>
 
         {/* Infinite-scroll sentinel + loading row */}
@@ -281,6 +322,69 @@ export default function HomePage() {
         <PlusIcon className="h-7 w-7" />
       </Link>
     </div>
+  );
+}
+
+function MemoCard({ m }: { m: MemoMeta }) {
+  return (
+    <Link
+      href={`/memo/${encodeURIComponent(m.id)}`}
+      className="block rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-sm transition-colors hover:border-line-strong"
+    >
+      <div className="truncate text-[15px] font-semibold text-ink">
+        {m.title}
+      </div>
+      {m.excerpt && (
+        <p className="mt-0.5 truncate text-xs text-ink-muted">{m.excerpt}</p>
+      )}
+      <div className="mt-1 text-xs text-ink-subtle">{shortDate(m.updated)}</div>
+      {(m.tags.length > 0 || m.folder) && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {m.folder && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-canvas px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
+              <FolderIcon className="h-3 w-3" />
+              {m.folder}
+            </span>
+          )}
+          {m.tags.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-0.5 rounded-md bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand"
+            >
+              <HashIcon className="h-3 w-3" />
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function FileCard({ f }: { f: FileItem }) {
+  const meta = [formatSize(f.size), shortDate(f.modifiedTime)]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <a
+      href={f.webViewLink ?? "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-sm transition-colors hover:border-line-strong"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-canvas text-ink-muted">
+        <FileIcon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold text-ink">
+          {f.name}
+        </span>
+        {meta && (
+          <span className="mt-0.5 block text-xs text-ink-subtle">{meta}</span>
+        )}
+      </span>
+      <ExternalLinkIcon className="h-4 w-4 shrink-0 text-ink-subtle" />
+    </a>
   );
 }
 

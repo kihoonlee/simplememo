@@ -21,3 +21,17 @@ export interface MemoMeta extends MemoFrontmatter {
   modifiedTime?: string; // Drive modifiedTime (RFC 3339) for conflict detection
   excerpt?: string; // plain-text body preview for list cards
 }
+
+// A non-memo file uploaded to the same folder (opened via Drive, not the editor).
+export interface FileItem {
+  kind: "file";
+  id: string;
+  name: string;
+  modifiedTime?: string;
+  webViewLink?: string;
+  mimeType?: string;
+  size?: number;
+}
+
+// A row in the list: either a memo (.md, opens in the editor) or an uploaded file.
+export type MemoListEntry = (MemoMeta & { kind: "memo" }) | FileItem;

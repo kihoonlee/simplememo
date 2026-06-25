@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
-import type { MemoMeta } from "@/lib/types";
+import type { MemoListEntry } from "@/lib/types";
 
 function msg(e: unknown): string {
   return e instanceof Error ? e.message : "불러오기 실패";
 }
 
-// Cursor-paginated memo list: loads the newest 10 first, appends 10 at a time
-// via loadMore(), and replaces the whole list via refresh() (pull-to-refresh).
+// Cursor-paginated list (memos + uploaded files): loads the newest 10 first,
+// appends 10 at a time via loadMore(), and replaces the whole list via
+// refresh() (pull-to-refresh, or after an upload).
 export function useMemoList() {
-  const [memos, setMemos] = useState<MemoMeta[]>([]);
+  const [items, setItems] = useState<MemoListEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // initial load only
   const [loadingMore, setLoadingMore] = useState(false);
@@ -24,8 +25,8 @@ export function useMemoList() {
     if (busyRef.current) return;
     busyRef.current = true;
     try {
-      const { memos: first, nextPageToken } = await api.listMemos();
-      setMemos(first);
+      const { items: first, nextPageToken } = await api.listMemos();
+      setItems(first);
       tokenRef.current = nextPageToken;
       setHasMore(Boolean(nextPageToken));
       setError(null);
@@ -42,10 +43,10 @@ export function useMemoList() {
     busyRef.current = true;
     setLoadingMore(true);
     try {
-      const { memos: more, nextPageToken } = await api.listMemos(
+      const { items: more, nextPageToken } = await api.listMemos(
         tokenRef.current,
       );
-      setMemos((prev) => {
+      setItems((prev) => {
         const seen = new Set(prev.map((m) => m.id));
         return [...prev, ...more.filter((m) => !seen.has(m.id))];
       });
@@ -67,5 +68,5 @@ export function useMemoList() {
     void refresh();
   }, [refresh]);
 
-  return { memos, error, loading, loadingMore, hasMore, refresh, loadMore };
+  return { items, error, loading, loadingMore, hasMore, refresh, loadMore };
 }

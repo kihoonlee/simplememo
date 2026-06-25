@@ -3,7 +3,7 @@ import { getDriveAccessToken } from "@/lib/auth-token";
 import { getFolderId } from "@/lib/folder-store";
 import {
   listMarkdown,
-  listMarkdownPage,
+  listFolderPage,
   readFile,
   createTextFile,
 } from "@/lib/drive/client";
@@ -11,7 +11,7 @@ import { parseMeta, serializeMemo } from "@/lib/markdown/frontmatter";
 import { slugify, uniqueFilename } from "@/lib/markdown/slug";
 import { memoInputSchema } from "@/lib/validation";
 import { errorResponse } from "@/lib/http";
-import type { MemoMeta } from "@/lib/types";
+import type { MemoListEntry } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
   const auth = await getDriveAccessToken(req);
@@ -29,20 +29,37 @@ export async function GET(req: NextRequest) {
   const PAGE_SIZE = 10;
 
   try {
-    // Only this page's files have their content read (newest first), so the
-    // initial list is fast even when the folder holds many memos.
-    const { files, nextPageToken } = await listMarkdownPage(
+    // Memos and uploaded files share the folder (newest first). Only .md files
+    // have their content read (for the preview), so the list stays fast.
+    const { files, nextPageToken } = await listFolderPage(
       auth.token,
       folderId,
       PAGE_SIZE,
       pageToken,
     );
-    const memos: MemoMeta[] = await Promise.all(
-      files.map(async (f) =>
-        parseMeta(f.id, f.name, await readFile(auth.token, f.id), f.modifiedTime),
-      ),
+    const items: MemoListEntry[] = await Promise.all(
+      files.map(async (f): Promise<MemoListEntry> => {
+        if (f.name.toLowerCase().endsWith(".md")) {
+          const meta = parseMeta(
+            f.id,
+            f.name,
+            await readFile(auth.token, f.id),
+            f.modifiedTime,
+          );
+          return { kind: "memo", ...meta };
+        }
+        return {
+          kind: "file",
+          id: f.id,
+          name: f.name,
+          modifiedTime: f.modifiedTime,
+          webViewLink: f.webViewLink,
+          mimeType: f.mimeType,
+          size: f.size ? Number(f.size) : undefined,
+        };
+      }),
     );
-    return NextResponse.json({ memos, nextPageToken: nextPageToken ?? null });
+    return NextResponse.json({ items, nextPageToken: nextPageToken ?? null });
   } catch (e) {
     const r = errorResponse(e);
     return NextResponse.json({ error: r.error }, { status: r.status });

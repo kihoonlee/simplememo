@@ -81,6 +81,19 @@ export const NoteIcon = ({ className }: IconProps) => (
   </Stroke>
 );
 
+export const UploadIcon = ({ className }: IconProps) => (
+  <Stroke className={className}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+  </Stroke>
+);
+
+export const FileIcon = ({ className }: IconProps) => (
+  <Stroke className={className}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6" />
+  </Stroke>
+);
+
 export const SpinnerIcon = ({ className, style }: IconProps) => (
   <Stroke className={className} style={style}>
     <path d="M12 3a9 9 0 1 0 9 9" />

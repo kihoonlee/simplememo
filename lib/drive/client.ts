@@ -12,6 +12,8 @@ export interface DriveFile {
   mimeType?: string;
   md5Checksum?: string;
   trashed?: boolean;
+  webViewLink?: string;
+  size?: string; // Drive returns size as a string of bytes
 }
 
 export class DriveError extends Error {
@@ -58,9 +60,10 @@ export async function listMarkdown(
   return (data.files ?? []).filter((f) => f.name.toLowerCase().endsWith(".md"));
 }
 
-// One page of non-trashed .md files under a folder, newest first, with a
+// One page of non-trashed files directly under a folder (memos AND uploaded
+// files — subfolders like images/ are excluded), newest first, with a
 // nextPageToken for cursor-based pagination (used by the infinite-scroll list).
-export async function listMarkdownPage(
+export async function listFolderPage(
   token: string,
   folderId: string,
   pageSize = 10,
@@ -69,15 +72,12 @@ export async function listMarkdownPage(
   const query = `'${q(folderId)}' in parents and trashed=false and mimeType!='${FOLDER_MIME}'`;
   let url =
     `${DRIVE}/files?q=${encodeURIComponent(query)}` +
-    `&fields=${encodeURIComponent("nextPageToken,files(id,name,modifiedTime)")}` +
+    `&fields=${encodeURIComponent("nextPageToken,files(id,name,modifiedTime,mimeType,webViewLink,size)")}` +
     `&orderBy=modifiedTime desc&pageSize=${pageSize}`;
   if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
   const res = await driveFetch(token, url);
   const data: { files?: DriveFile[]; nextPageToken?: string } = await res.json();
-  const files = (data.files ?? []).filter((f) =>
-    f.name.toLowerCase().endsWith(".md"),
-  );
-  return { files, nextPageToken: data.nextPageToken };
+  return { files: data.files ?? [], nextPageToken: data.nextPageToken };
 }
 
 export async function readFile(token: string, id: string): Promise<string> {
@@ -137,6 +137,23 @@ export async function createTextFile(
     { name, parents: [folderId], mimeType: "text/markdown" },
     "text/markdown",
     content,
+  );
+}
+
+// Upload an arbitrary file into the folder. Kept private (no link sharing) —
+// it's a personal attachment, unlike images which are shared for external render.
+export async function uploadFile(
+  token: string,
+  folderId: string,
+  name: string,
+  bytes: ArrayBuffer,
+  mediaType: string,
+): Promise<DriveFile> {
+  return uploadMultipart(
+    token,
+    { name, parents: [folderId], mimeType: mediaType },
+    mediaType,
+    bytes,
   );
 }
 

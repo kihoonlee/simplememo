@@ -1,4 +1,4 @@
-import type { MemoMeta } from "@/lib/types";
+import type { MemoListEntry } from "@/lib/types";
 
 export class ApiError extends Error {
   status: number;
@@ -45,18 +45,24 @@ export interface SaveResult {
 }
 
 export interface MemoPage {
-  memos: MemoMeta[];
+  items: MemoListEntry[];
   nextPageToken: string | null;
 }
 
 export const api = {
-  // One page of memos (newest first). Omit pageToken for the first page;
-  // pass the previous response's nextPageToken to load the next page.
+  // One page of list entries — memos and uploaded files (newest first). Omit
+  // pageToken for the first page; pass the previous nextPageToken for the next.
   async listMemos(pageToken?: string): Promise<MemoPage> {
     const url = pageToken
       ? `/api/memos?pageToken=${encodeURIComponent(pageToken)}`
       : "/api/memos";
     return json<MemoPage>(await fetch(url));
+  },
+  // Upload an arbitrary file into the memo folder (independent of memos).
+  async uploadFile(file: File): Promise<{ id: string; name: string }> {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    return json(await fetch("/api/files", { method: "POST", body: fd }));
   },
   async getMemo(id: string): Promise<MemoContent> {
     return json(await fetch(`/api/memos/${encodeURIComponent(id)}`));
